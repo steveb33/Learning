@@ -73,10 +73,10 @@ rb_df = df.loc[(df['Pos'] == 'RB', base_columns + rushing_columns)]
 rb_df['RushingTDRank'] = rb_df['RushingTD'].rank(ascending=False)
 # print(rb_df.sort_values(by='RushingTDRank').head(5))
 
-sns.set_style('whitegrid')
-sns.displot(rb_df['RushingAtt'], kde=True, stat='density')
+# sns.set_style('whitegrid')
+# sns.displot(rb_df['RushingAtt'], kde=True, stat='density')
 # Set the x-axis limit to start at 0
-plt.xlim(0)
+# plt.xlim(0)
 # plt.show()
 
 # Grabbing ADP Data
@@ -123,5 +123,69 @@ df['VOR'] = df.apply(
     lambda row: row['FantasyPoints'] - replacement_values.get(row['Pos']), axis=1
 )
 
-print(df.head())
+# print(df.head())
 
+pd.set_option('display.max_rows', None)
+
+df['VOR Rank'] = df['VOR'].rank(ascending=False)
+
+# print(df.sort_values(by='VOR', ascending=False).head(100))
+
+# print(df.groupby('Pos')['VOR'].describe())
+
+df['VOR'] = df['VOR'].apply(lambda x: (x - df['VOR'].min()) / (df['VOR'].max() - df['VOR'].min()))
+df = df.sort_values(by='VOR Rank')
+# print(df.head())
+
+num_teams = 12
+num_spots = 16
+draft_pool = num_teams * num_teams
+
+df_copy = df[:draft_pool]
+
+# sns.set_style('whitegrid')
+# sns.boxplot(x=df_copy['Pos'], y=df_copy['VOR'], palette='Set2')
+# plt.show()
+
+# Renaming columns before merging the dataframes
+df = df.rename({
+    'VOR': 'Value',
+    'VOR Rank': 'Value Rank'
+}, axis=1)
+
+adp_df = adp_df.rename({
+    'PLAYER': 'Player',
+    'POS': 'Pos',
+    'AVG': 'Average ADP',
+    'ADP RANK': 'ADP Rank'
+}, axis=1)
+
+adp_df = adp_df.drop('Team', axis=1)
+
+df['Player'] = df['Player'].replace({
+    'Kenneth Walker III': 'Kenneth Walker',
+    'Travis Etienne Jr.': 'Travis Etienne',
+    'Brian Robinson Jr.': 'Brian Robinson',
+    'Pierre Strong Jr.': 'Pierre Strong',
+    'Michael Pittman Jr.': 'Michael Pittman',
+    'A.J. Dillon': 'AJ Dillon',
+    'D.J. Moore': 'DJ Moore'
+})
+
+final_df = df.merge(adp_df, how='left', on=['Player', 'Pos'])
+
+# print(final_df.head(100))
+
+# Calc difference between value rank and ADP rank plus remove outliers
+final_df['Diff in ADP and Value'] = final_df['ADP Rank'] - final_df['Value Rank']
+final_df = final_df.loc[final_df['ADP Rank'] <= 212]
+# print(final_df.head())
+
+draft_pool = final_df.sort_values(by='ADP Rank')[:196]
+
+rb_draft_pool = draft_pool.loc[draft_pool['Pos'] == 'RB']
+qb_draft_pool = draft_pool.loc[draft_pool['Pos'] == 'QB']
+wr_draft_pool = draft_pool.loc[draft_pool['Pos'] == 'WR']
+te_draft_pool = draft_pool.loc[draft_pool['Pos'] == 'TE']
+
+print(wr_draft_pool.sort_values(by='Diff in ADP and Value', ascending=False)[:10])
