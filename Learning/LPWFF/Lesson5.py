@@ -82,4 +82,46 @@ plt.xlim(0)
 # Grabbing ADP Data
 adp_df = pd.read_csv('https://raw.githubusercontent.com/fantasydatapros/LearnPythonWithFantasyFootball/master/2023/06-Data%20Munging/02-ADP%20Data%20-%20(2023.03.30).csv')
 
-print(adp_df.head())
+adp_df['ADP RANK'] = adp_df['Current ADP'].rank()
+# print(adp_df.head())
+
+adp_df_cutoff = adp_df[:75]
+# print(adp_df_cutoff.shape)
+
+replacement_players = {
+    'RB': '',
+    'QB': '',
+    'WR': '',
+    'TE': ''
+}
+
+for _, row in adp_df_cutoff.iterrows():
+    position = row['Pos'] # extract the position and player value from each row as we loop through it
+    player = row['Player']
+
+    if position in replacement_players: # if the position is in the dict's keys
+        replacement_players[position] = player # set that player as the replacement player
+
+# print(replacement_players)
+
+df = df[['Player', 'Pos', 'Team', 'FantasyPoints']] # filtering out the columns we need
+# print(df.head())
+
+replacement_values = {}
+
+for position, player_name in replacement_players.items():
+    player = df.loc[df['Player'] == player_name.strip()]
+    replacement_values[position] = player['FantasyPoints'].tolist()[0]
+
+# print(replacement_values)
+
+pd.set_option('chained_assignment', None)
+
+df = df.loc[df['Pos'].isin(['QB', 'RB', 'WR', 'TE'])]
+
+df['VOR'] = df.apply(
+    lambda row: row['FantasyPoints'] - replacement_values.get(row['Pos']), axis=1
+)
+
+print(df.head())
+
