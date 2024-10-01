@@ -71,11 +71,10 @@ df['PersonnelPkg'] = df['CountRB'].astype(str) + df['CountTE'].astype(str)
 # Select defensive, offensive, and other relevant variables
 defensive_variables = df[['DefensePersonnel', 'DefensePackage', 'DefendersInTheBox', 'CountDB', 'CountDL', 'CountLB']]
 offensive_variables = df[['OffenseFormation', 'OffensePersonnel', 'PersonnelPkg', 'CountWR', 'CountTE', 'CountRB']]
-other_features = df[['Quarter', 'Down', 'Distance', 'Ball_X', 'Temperature', 'Humidity']]
 target = df['Yards']
 
 # Concatenate the different variables into a single dataframe
-df = pd.concat([df[['PlayId']], defensive_variables, offensive_variables, other_features, target], axis=1)
+df = pd.concat([df[['PlayId']], defensive_variables, offensive_variables, target], axis=1)
 
 # Set 'PlayId' as the index
 df.set_index('PlayId', inplace=True)
@@ -108,7 +107,7 @@ df_lr_nn.to_csv('/Users/stevenbarnes/Desktop/Resources/Data/NFL Big Data Bowl/li
 
 # 2. Dataset for tree-based models (label encoding for categorical variables, no scaling)
 
-# Make a copy
+# Make a copyPr
 df_tree = df.copy()
 
 # Label encode categorical variables (instead of one-hot encoding)
