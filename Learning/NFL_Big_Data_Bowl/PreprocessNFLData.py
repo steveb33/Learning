@@ -107,7 +107,7 @@ df_lr_nn.to_csv('/Users/stevenbarnes/Desktop/Resources/Data/NFL Big Data Bowl/li
 
 # 2. Dataset for tree-based models (label encoding for categorical variables, no scaling)
 
-# Make a copyPr
+# Make a copy
 df_tree = df.copy()
 
 # Label encode categorical variables (instead of one-hot encoding)
