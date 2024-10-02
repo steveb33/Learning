@@ -89,9 +89,9 @@ of ML methods being tested in this analysis.
 
 # Separate features into continuous and discrete
 continuous_vars = ['DefendersInTheBox', 'CountDB', 'CountDL', 'CountLB', 'CountWR',
-                   'CountTE', 'CountRB', 'Distance', 'Ball_X', 'Temperature', 'Humidity', 'Yards']
+                   'CountTE', 'CountRB', 'Yards']
 discrete_vars = ['DefensePersonnel', 'DefensePackage', 'OffenseFormation', 'OffensePersonnel',
-                 'PersonnelPkg', 'Quarter', 'Down']
+                 'PersonnelPkg']
 
 # 1. Dataset for Linear Regression / Neural Networks (scaling & one-hot encoding)
 
