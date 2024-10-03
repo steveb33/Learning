@@ -5,7 +5,7 @@ import pandas as pd
 import requests
 
 # My API key - find key at https://site.financialmodelingprep.com/developer/docs/dashboard
-api_key = 'RIUapBl1uPO3IVyMCUMzq6R81D55c4iz'
+api_key = 'find key at website'
 
 # Some example stocks
 stocks = ['AMZN', 'AAPL', 'META', 'GOOGL']
