@@ -6,8 +6,7 @@ A baseline linear regression will be constructed to compare and contrast the eff
 """
 
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split, GridSearchCV, KFold
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.linear_model import Lasso, ElasticNet, LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.impute import SimpleImputer
