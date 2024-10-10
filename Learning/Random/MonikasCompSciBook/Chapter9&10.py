@@ -97,3 +97,46 @@ def count_abecedarion():
     print(f"Number of abecedarion words: {count}")
 count_abecedarion()
 
+# 10.2 - Nested listed with capitalization
+def capitalize_all(t):
+    res = []
+    for s in t:
+        res.append(s.capitalize())
+    return res
+def capitalize_nested(nested_list):
+    res = []
+    for element in nested_list:
+        if isinstance(element, list):
+            # Recursively capitalize elements in nested lists
+            res.append(capitalize_nested(element))
+        else:
+            #Capitalize the string if it's not a list
+            res.append(element.capitalize())
+    return res
+nested_list = [['let', 'us', 'see'], ['if', 'this'], ['function', 'works'], 'correctly']
+capitalize_nested(nested_list)
+
+# 10.3 - Cumulative sum of list
+def cumulative_sum(t):
+    res = []
+    csum = 0
+    for num in t:
+        csum += num # Add the current number to the running total
+        res.append(csum)
+    print(res)
+    return res
+cumulative_sum_list = [1, 2, 3]
+cumulative_sum(cumulative_sum_list)
+
+# 10.4 - Middle function
+def middle(t):
+    return t[1:-1]
+print(middle([1, 2, 3, 4]))
+
+# 10.5 - Chopping the middle but return None
+def chop(t):
+    if len(t) > 1:
+        del t[0]
+        del t[-1]
+print(chop([1, 2, 3, 4]))
+
