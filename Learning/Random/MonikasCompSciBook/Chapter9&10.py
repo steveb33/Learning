@@ -140,3 +140,20 @@ def chop(t):
         del t[-1]
 print(chop([1, 2, 3, 4]))
 
+# 10.6 - Is Sorted?
+def is_sorted(t):
+    for i in range(len(t) - 1):
+        if t[i] > t[i + 1]:
+            return False
+    return True
+print(is_sorted([1,2,3]))
+print(is_sorted(['a','z','b']))
+
+# 10.7 - Are Anagrams?
+def is_anagram(word1, word2):
+    # Start by ensuring both words are in lowercase
+    word1 = word1.lower()
+    word2 = word2.lower()
+    return sorted(word1) == sorted(word2)
+print(is_anagram('listen','silent'))
+print(is_anagram('apple', 'pale'))
