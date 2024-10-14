@@ -66,5 +66,29 @@ def histogram(s):
     for c in s:
         d[c] = d.get(c, 0) + 1
     return d
-def choose_from_hist(s):
-    
+
+def choose_from_hist(hist): # Function to choose from histogram
+    total = sum(hist.values())  # Total number of Items
+    cumulative_prob = []    # To store cumualtive probabilities
+    items = []   # To store histogram keys
+
+    current_prob = 0
+    for key, freq in hist.items():
+        current_prob += freq / total    # Add the proportional frequency to cumulative probability
+        cumulative_prob.append(current_prob)    # Add cumulative probability to the list
+        items.append(key)   # Add the key (item) to the list
+
+    # Generage a random number between 0 and 1
+    r = random.random()
+
+    # Find where the random number falls in the cumulative probability list
+    for i, prob in enumerate(cumulative_prob):
+        if r < prob:
+            return items[i]
+
+# Example usage
+t = ['a', 'a', 'b']
+hist = histogram(t)
+print(hist)
+for _ in range(10):
+    print(choose_from_hist(hist))
