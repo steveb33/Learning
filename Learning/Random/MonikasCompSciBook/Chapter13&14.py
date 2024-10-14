@@ -2,8 +2,8 @@ import requests
 import string
 
 # # # Exercise 13.1 # # #
-# The link to the txt file
-url = 'https://raw.githubusercontent.com/AllenDowney/ThinkPython2/master/code/words.txt'
+# The link to a book
+url = 'https://gutenberg.org/cache/epub/74565/pg74565-images.html'
 
 # Function to read in the file used
 def read_txt_file(url):
@@ -39,3 +39,4 @@ top_10 = sorted(frequencies.items(), key=lambda x: x[1], reverse=True)[:10]
 print('Top 10 most frequent words')
 for word, count in top_10:
     print(f'{word}: {count}')
+
