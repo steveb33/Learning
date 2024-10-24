@@ -190,14 +190,40 @@ class Deck(object):
     def sort(self):         # Exercise 18.2
         self.cards.sort()   # Python will use the Card's lt method for sorting
 
-# # Proof for Exercise 18.2
-# deck = Deck()
-# deck.shuffle()
-# print("Shuffled deck:")
-# print(deck)
-# print("\nSorted deck:")
-# deck.sort()
-# print(deck)
+    def move_cards(self, hand, num):
+        for i in range(num):
+            hand.add_card(self.pop_card())
+
+    def deal_hands(self, num_hands, num_cards):     # Exercise 18.3
+        hands = []                                  # List to store hand objects
+        for i in range(num_hands):
+            hand = Hand(f'Hand {i + 1}')            # Create a hand object with a label
+            self.move_cards(hand, num_cards)        # Deal the required number of cards
+            hands.append(hand)                      # Append the hand to the list
+        return hands                                # Return the list of hand objects
+
+class Hand(Deck):
+    """Represents a hand of playing cards"""
+
+    def __init__(self, label=''):
+        self.cards = []
+        self.label = label
+
+    def __str__(self):                          # From exercise 18.3
+        res = [f"{self.label} contains:"]
+        for card in self.cards:
+            res.append(str(card))
+        return '\n'.join(res)
+
+# Find defining class
+def find_defining_class(obj, meth_name):
+    for ty in type(obj).mro():
+        if meth_name in ty.__dict__:
+            return ty
+# hand = Hand()
+# print(find_defining_class(hand, 'shuffle'))
+
+
 
 # 18.1 - Time class with cmp
 class Time(object):
@@ -230,3 +256,20 @@ class Time(object):
         return (self.hour, self.minute, self.second) > (other.hour, other.minute, other.second)
         """If I want to return the -1, 0, and 1 like the above example, I would need to change the '>' to '-' """
 
+
+# Proof for Exercise 18.2
+deck = Deck()
+deck.shuffle()
+print("Shuffled deck:")
+print(deck)
+print("\nSorted deck:")
+deck.sort()
+print(deck)
+
+# Exercise 18.3 Answer Check
+deck = Deck()
+deck.shuffle()
+hands = deck.deal_hands(4, 5)
+for hand in hands:
+    print(hand)
+    print('-' * 20)
