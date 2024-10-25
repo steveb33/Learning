@@ -35,6 +35,17 @@ for ticker in tickers:
     except Exception as e:
         print(f'Error fetching data for {ticker}: {e}')
 
-# Save the combined DataFrame as a csv
-combined_data.to_csv('/Users/stevenbarnes/Desktop/Resources/Data/Asset Pricing Round 2/5yr_S&P500_data.csv')
-print("All data saved to '5yr_S&P500_data.csv'")
+"""This is outputting a really ugly multi-level table so I need to clean it up"""
+
+# Reset the index to move Date into a column
+combined_data_cleaned = combined_data.reset_index()
+
+# If there is a multi-level column, flatten it to avoid multi-level headers
+if isinstance(combined_data_cleaned.columns, pd.MultiIndex):
+    combined_data_cleaned.columns = combined_data_cleaned.columns.get_level_values(1)
+
+# Rename the first column to Date
+combined_data_cleaned.rename(columns={combined_data_cleaned.columns[0]: 'Date'}, inplace=True)
+
+# Save the DataFrame with the correct structure (no index column)
+combined_data_cleaned.to_csv('/Users/stevenbarnes/Desktop/Resources/Data/Asset Pricing Round 2/5yr_S&P500_data.csv', index=False)
