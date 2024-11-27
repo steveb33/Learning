@@ -1,13 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 
-# File path for saving outputs
-output_path = "/Users/stevenbarnes/Desktop/Resources/Ideas/Ridge/"
-os.makedirs(output_path, exist_ok=True)
 
 def create_dataset(function_type='quadratic', n_samples=1000, noise_level=0.5, random_seed=42):
     """
@@ -27,9 +23,9 @@ def create_dataset(function_type='quadratic', n_samples=1000, noise_level=0.5, r
     X = np.linspace(-10, 10, n_samples).reshape(-1, 1) # Generate X values in range [-10, 10] evenly
 
     if function_type == 'quadratic':
-        y = 3 * X**2 - 5 * X + 7    # Quadratic function
+        y = (3 * X**2 - 5 * X + 7)/10    # Quadratic function
     elif function_type == 'cubic':
-        y = 0.5 * X**3 - 2 * X**2 + 3 * X +1    # Cubic function
+        y = (0.5 * X**3 - 2 * X**2 + 3 * X +1)/10    # Cubic function
     else:
         raise ValueError('Invalid function_type. Choose quadratic or cubic')
 
@@ -53,16 +49,41 @@ datasets = [
 ]
 
 # Define alpha values
-alphas = [0, 10**-5, 1]
+alphas = [10**2, 10**3, 10**4, 10**5]
 
 # Prepare 2x2 grid for subplots
-fig, axes = plt.subplot(2, 2, figsize=(14, 10))
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
 # Loop through datasets and assign subplots based on position
 for (title, X, y, degree), ax in zip(datasets, axes.flat):
     # Loop through the alpha values
-    for alpha, linestyle in zip(alphas, ['dotted', 'dashed', 'solid']):
+    for alpha, color in zip(alphas, ['orange', 'red', 'green', 'purple', 'brown']):
         # Create a Ridge regression pipeline with polynomial features
         model = make_pipeline(PolynomialFeatures(degree=degree), Ridge(alpha=alpha))
         model.fit(X, y)
-        
+
+        # Predict the model predictions
+        X_plot = np.linspace(X.min(), X.max(), 100).reshape(-1, 1)
+        y_pred = model.predict(X_plot)
+
+        # Plot the model predictions
+        ax.plot(X_plot, y_pred, color=color, linewidth=2, label=f"$alpha=10^{{{int(np.log10(alpha))}}}$")
+
+    # Scatter the original data
+    ax.scatter(X, y, color='blue', alpha=0.5)
+    ax.set_title(title)
+    ax.set_xlabel("$x$")
+    ax.set_ylabel("$y$")
+    ax.legend()
+    ax.grid()
+
+# Set layout and save
+plt.tight_layout()
+plt.show()
+
+"""
+The resulting figure from thise code illustrates how as you increase the alpha within rigde regression,
+the bias of the model increases, and thus decreases the variance. This effect is particularly apparent when looking
+at the smaller sample(m) plots on the bottom axis which show cases the greater degree of variation of fit regarding the 
+different alpha values.
+"""
