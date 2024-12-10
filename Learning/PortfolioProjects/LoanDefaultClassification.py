@@ -116,3 +116,47 @@ for model_name, model in models:
 # Save results to CSV
 results_df = pd.DataFrame(results)
 results_df.to_csv(os.path.join(output_path, 'ModelComparisonResults.csv'), index=False)
+
+# Function that adds in the feature importance to add some depth to my write-up
+def generate_feature_importance_csv(X_train, y_train, output_path):
+    feature_importance_results = []
+
+    # Random Forest Feature Importance
+    rf_model = RandomForestClassifier(random_state=42)
+    rf_model.fit(X_train, y_train)
+    rf_importances = rf_model.feature_importances_
+    for feature, importance in zip(X_train.columns, rf_importances):
+        feature_importance_results.append({
+            'Model': 'Random Forest',
+            'Feature': feature,
+            'Importance': importance
+        })
+
+    # Gradient Boosting Feature Importance
+    gb_model = GradientBoostingClassifier(random_state=42)
+    gb_model.fit(X_train, y_train)
+    gb_importances = gb_model.feature_importances_
+    for feature, importance in zip(X_train.columns, gb_importances):
+        feature_importance_results.append({
+            'Model': 'Gradient Boosting',
+            'Feature': feature,
+            'Importance': importance
+        })
+
+    # Logistic Regression Coefficients (optional for scaled data)
+    logreg_model = LogisticRegression(max_iter=1000, random_state=42)
+    logreg_model.fit(X_train, y_train)
+    logreg_coefficients = logreg_model.coef_[0]
+    for feature, coefficient in zip(X_train.columns, logreg_coefficients):
+        feature_importance_results.append({
+            'Model': 'Logistic Regression',
+            'Feature': feature,
+            'Importance': coefficient
+        })
+
+    # Convert to DataFrame and save to CSV
+    feature_importance_df = pd.DataFrame(feature_importance_results)
+    feature_importance_df.to_csv(os.path.join(output_path, 'FeatureImportance.csv'), index=False)
+
+# Call the function
+generate_feature_importance_csv(X_train_scaled, y_train, output_path)
