@@ -1,36 +1,118 @@
+"""
+This code used the Loan Default Prediction Challenge from Kaggle at
+https://www.kaggle.com/datasets/nikhil1e9/loan-default/data
 
+This code outputs csvs formatted in a way that allows for easy Tableau visual creations
+"""
 
-import numpy as np
 import pandas as pd
 import os
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report, roc_auc_score
 
 # Read in CSV and create output path
 data = pd.read_csv('/Users/stevenbarnes/Desktop/Resources/Data/LoanDefaultPrediction/Loan_default.csv')
 output_path = '/Users/stevenbarnes/Desktop/Resources/Data/LoanDefaultPrediction/'
 os.makedirs(output_path, exist_ok=True)
 
-# # Look for Nulls to see if data needs to be amended
-# pd.set_option('display.max_columns', None)  # Show all columns
-# print(data.info())
-
-# Initialize the Label Encoder and encode the categorical features
+# Encode categorical features
 le = LabelEncoder()
 obj_col = ['HasCoSigner', 'LoanPurpose', 'HasDependents', 'HasMortgage', 'MaritalStatus', 'EmploymentType', 'Education']
-
 for col in obj_col:
     data[col] = le.fit_transform(data[col])
 
-# # Make sure the categorical features were properly encoded
-# print(data.info())
+# Define predictor varaibles (X) and target variables (y)
+X = data.drop(columns=['Default', 'LoanID'])    # Excludes the target and identifier features
+y = data['Default']
 
-# Create a correlation matrix with the encoded data to visualize and play with in Tableau
-corr_matrix = data.corr(numeric_only=True)
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-# Add an index column titled "Features" with feature names
-corr_matrix.insert(0, 'Features', corr_matrix.columns)
+# Scale the numeric features
+scaler = StandardScaler()
+num_col = ['Age', 'Income', 'LoanAmount', 'CreditScore', 'MonthsEmployed', 'NumCreditLines', 'InterestRate', 'DTIRatio']
 
-# Output the correlation matrix
-output_file = os.path.join(output_path, 'LoanDefaultCorr.csv')
-corr_matrix.to_csv(output_file, index=False)
+X_train_scaled = X_train.copy()
+X_test_scaled = X_test.copy()
+X_train_scaled[num_col] = scaler.fit_transform(X_train[num_col])
+X_test_scaled[num_col] = scaler.transform(X_test[num_col])
 
+"""
+The following creates a correlation matrix, but the output is structured so that it will be easier to use in Tableau
+"""
+# Create the combined correlation matrix, including the 'Default' feature
+correlation_output = []
+
+# Combine X_train and y to handle correlations with 'Default'
+X_train_with_default = X_train.copy()
+X_train_with_default['Default'] = y.loc[X_train.index]
+
+X_train_scaled_with_default = X_train_scaled.copy()
+X_train_scaled_with_default['Default'] = y.loc[X_train.index]
+
+# Generate correlations
+for feature in X_train_with_default.columns:
+    for correlated_feature in X_train_with_default.columns:
+        unscaled_corr = X_train_with_default[feature].corr(X_train_with_default[correlated_feature])
+        scaled_corr = X_train_scaled_with_default[feature].corr(X_train_scaled_with_default[correlated_feature])
+        correlation_output.append({
+            'Feature': feature,
+            'Corr Ft': correlated_feature,
+            'Unscaled Corr': unscaled_corr,
+            'Scaled Corr': scaled_corr
+        })
+
+# Convert to DataFrame and save to CSV
+correlation_df = pd.DataFrame(correlation_output)
+correlation_df.to_csv(os.path.join(output_path, 'LoanDefaultCorr.csv'), index=False)
+
+"""
+Now we will start creating the metrics for the different models and data types
+"""
+
+
+# Metric Function
+def evaluate_model(model, X_train, X_test, y_train, y_test, data_type, model_name, results):
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_prob = model.predict_proba(X_test)[:, 1]
+
+    # Collect metrics
+    metrics = {
+        'Accuracy': model.score(X_test, y_test),
+        'Precision': classification_report(y_test, y_pred, output_dict=True)['1']['precision'],
+        'Recall': classification_report(y_test, y_pred, output_dict=True)['1']['recall'],
+        'F1-Score': classification_report(y_test, y_pred, output_dict=True)['1']['f1-score'],
+        'AUC-ROC': roc_auc_score(y_test, y_prob)
+    }
+
+    # The following formats the data created above into a structure that makes it easier to use in Tableau
+    for metric, value in metrics.items():
+        results.append({
+            'Model': model_name,
+            'Data': data_type,
+            'Metric': metric,
+            'Values': value
+        })
+
+# Initialize models
+models = [
+    ('Logistic Regression', LogisticRegression(max_iter=1000, random_state=42)),
+    ('Random Forest', RandomForestClassifier(random_state=41)),
+    ('Gradient Boosting', GradientBoostingClassifier(random_state=42)),
+    ('K-Nearest Neighbors', KNeighborsClassifier())
+]
+
+# Evaluate the models for scaled and scaled data
+results = []
+for model_name, model in models:
+    evaluate_model(model, X_train, X_test, y_train, y_test, 'Unscaled', model_name, results)
+    evaluate_model(model, X_train_scaled, X_test_scaled, y_train, y_test, 'Scaled', model_name, results)
+
+# Save results to CSV
+results_df = pd.DataFrame(results)
+results_df.to_csv(os.path.join(output_path, 'ModelComparisonResults.csv'), index=False)
