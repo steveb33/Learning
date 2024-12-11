@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix
 
 # Read in CSV and create output path
 data = pd.read_csv('/Users/stevenbarnes/Desktop/Resources/Data/LoanDefaultPrediction/Loan_default.csv')
@@ -160,3 +160,32 @@ def generate_feature_importance_csv(X_train, y_train, output_path):
 
 # Call the function
 generate_feature_importance_csv(X_train_scaled, y_train, output_path)
+
+# Function to generate confusion matrix metrics and output as CSV formatted for Tableau
+def generate_confusion_metrics_single(models, X_train, X_test, y_train, y_test, output_path):
+    confusion_results = []
+
+    for model_name, model in models:
+        # Train and predict
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+
+        # Compute confusion matrix
+        tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+
+        # Calculate derived metrix
+        confusion_results.append([
+            {'Model': model_name, 'Metric': 'True Positive', 'Values': tp},
+            {'Model': model_name, 'Metric': 'True Negatives', 'Values': tn},
+            {'Model': model_name, 'Metric': 'False Positives', 'Values': fp},
+            {'Model': model_name, 'Metric': 'False Negatives', 'Values': fn},
+            {'Model': model_name, 'Metric': 'False Positive Rate', 'Values': fp / (fp + tn)},
+            {'Model': model_name, 'Metric': 'False Negative Rate', 'Values': fn / (fn + tp)}
+        ])
+
+    # Convert to DataFrame and save to CSV
+    confusion_df = pd.DataFrame(confusion_results)
+    confusion_df.to_csv(os.path.join(output_path, 'ConfusionMetrics.csv'), index=False)
+
+# Call confusion metrics function
+generate_confusion_metrics_single(models, X_train_scaled, X_test_scaled, y_train, y_test, output_path)
