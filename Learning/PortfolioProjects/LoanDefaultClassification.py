@@ -173,8 +173,8 @@ def generate_confusion_metrics_single(models, X_train, X_test, y_train, y_test, 
         # Compute confusion matrix
         tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
 
-        # Calculate derived metrix
-        confusion_results.append([
+        # Calculate derived metrics and append each as a separate dictionary
+        confusion_results.extend([
             {'Model': model_name, 'Metric': 'True Positive', 'Values': tp},
             {'Model': model_name, 'Metric': 'True Negatives', 'Values': tn},
             {'Model': model_name, 'Metric': 'False Positives', 'Values': fp},
@@ -187,5 +187,6 @@ def generate_confusion_metrics_single(models, X_train, X_test, y_train, y_test, 
     confusion_df = pd.DataFrame(confusion_results)
     confusion_df.to_csv(os.path.join(output_path, 'ConfusionMetrics.csv'), index=False)
 
-# Call confusion metrics function
+# Call the function
 generate_confusion_metrics_single(models, X_train_scaled, X_test_scaled, y_train, y_test, output_path)
+
