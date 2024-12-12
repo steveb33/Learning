@@ -1,18 +1,24 @@
 import numpy as np
 import pandas as pd
 import os
+import time
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import roc_auc_score, precision_recall_fscore_support, confusion_matrix
 from sklearn.inspection import permutation_importance
 
+# Start script timer
+start_time = time.time()
+
 # Read in CSV and create output path
+print("Loading dataset...")
 data = pd.read_csv('/Users/stevenbarnes/Desktop/Resources/Data/LoanDefaultPrediction/Loan_default.csv')
 output_path = '/Users/stevenbarnes/Desktop/Resources/Data/LoanDefaultPrediction/'
 os.makedirs(output_path, exist_ok=True)
+print("Dataset loaded successfully. Starting preprocessing...")
 
 # Encode categorical features
 le = LabelEncoder()
@@ -25,12 +31,13 @@ X = data.drop(columns=['Default', 'LoanID'])    # Excludes the target and identi
 y = data['Default']
 
 # Split the data into training and testing sets
+print("Splitting data into training and testing sets...")
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+print(f"Training set size: {X_train.shape[0]} samples, Testing set size: {X_test.shape[0]} samples")
 
 # Scale the numeric features
 scaler = StandardScaler()
 num_col = ['Age', 'Income', 'LoanAmount', 'CreditScore', 'MonthsEmployed', 'NumCreditLines', 'InterestRate', 'DTIRatio']
-
 X_train_scaled = X_train.copy()
 X_test_scaled = X_test.copy()
 X_train_scaled[num_col] = scaler.fit_transform(X_train[num_col])
@@ -57,22 +64,29 @@ for feature in X_train_scaled_with_default.columns:
 correlation_df = pd.DataFrame(correlation_output)
 correlation_df.to_csv(os.path.join(output_path, 'LoanDefaultCorr.csv'), index=False)
 
-# Initialize models
+# Models and their hyperparameter grids
 models = [
-    ('Logistic Regression', LogisticRegression(max_iter=1000, random_state=42)),
-    ('Random Forest', RandomForestClassifier(random_state=41)),
-    ('Gradient Boosting', GradientBoostingClassifier(random_state=42)),
-    ('K-Nearest Neighbors', KNeighborsClassifier())
+    ('Logistic Regression', LogisticRegression(max_iter=1000), {'C': [0.01, 0.1, 1, 10]}),
+    ('Random Forest', RandomForestClassifier(), {'n_estimators': [50, 100, 200], 'max_depth': [None, 10, 20]}),
+    ('Gradient Boosting', GradientBoostingClassifier(), {'learning_rate': [0.01, 0.1, 0.2], 'n_estimators': [50, 100, 200]}),
+    ('K-Nearest Neighbors', KNeighborsClassifier(), {'n_neighbors': [3, 5, 7, 9]})
 ]
 
-# Function to evaluate models and tune thresholds
-def evaluate_and_tune(models, X_train, X_test, y_train, y_test, thresholds, output_path):
+# Function to evaluate models, tune thresholds, and record feature importance
+def evaluate_tune_and_record(models, X_train, X_test, y_train, y_test, thresholds, output_path):
     comparison_results = []
     threshold_results = []
+    feature_importances = []
+    best_params = []
 
-    for model_name, model in models:
+    for model_name, model, param_grid in models:
         # Train and predict
-        model.fit(X_train, y_train)
+        print(f"Starting hyperparameter tuning for {model_name}...")
+        grid_search = GridSearchCV(model, param_grid, cv=5, scoring='roc_auc')
+        grid_search.fit(X_train, y_train)
+        print(f"Completed hyperparameter tuning for {model_name}. Best parameters: {grid_search.best_params_}")
+        model = grid_search.best_estimator_
+        best_params.append({'Model': model_name, 'Best Params': grid_search.best_params_})  # Records the best params
         y_pred = model.predict(X_test)
         y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, 'predict_proba') else None
 
@@ -139,23 +153,12 @@ def evaluate_and_tune(models, X_train, X_test, y_train, y_test, thresholds, outp
                         'Threshold': threshold,
                         'Metric': 'AUC-ROC', 'Values': auc_roc  # AUC-ROC remains constant for the model
                     })
+            print(f"Threshold tuning completed for {model_name}.")
 
-    # Save results to CSV
-    comparison_df = pd.DataFrame(comparison_results)
-    comparison_df.to_csv(f"{output_path}/ModelComparisonResults.csv", index=False)
-
-    threshold_df = pd.DataFrame(threshold_results)
-    threshold_df.to_csv(f"{output_path}/ThresholdTuningResults.csv", index=False)
-
-# Function to evaluate and compute feature importance
-def compute_feature_importance_with_ranking(models, X_train, X_test, y_train, y_test, output_path):
-    feature_importances = []
-
-    for model_name, model in models:
-        model.fit(X_train, y_train)
-
+        # Feature importance with ranking recording
         if hasattr(model, 'feature_importances_'):
             # Tree-based models (Random Forest, Gradient Boosting)
+            print(f"Extracting feature importances for {model_name}...")
             importances = model.feature_importances_
             for feature, importance in zip(X_train.columns, importances):
                 feature_importances.append({
@@ -165,6 +168,7 @@ def compute_feature_importance_with_ranking(models, X_train, X_test, y_train, y_
                 })
         elif isinstance(model, LogisticRegression):
             # Logistic Regression (coefficients)
+            print(f"Calculating feature importances for {model_name} using coefficients...")
             coefficients = model.coef_[0]
             for feature, coef in zip(X_train.columns, coefficients):
                 feature_importances.append({
@@ -174,7 +178,8 @@ def compute_feature_importance_with_ranking(models, X_train, X_test, y_train, y_
                 })
         elif model_name == 'K-Nearest Neighbors':
             # K-Nearest Neighbors using permutation importance
-            perm_importance = permutation_importance(model, X_test, y_test, scoring='accuracy', n_repeats=10, random_state=42)
+            print(f"Estimating permutation importances for {model_name} (this may take time)...")
+            perm_importance = permutation_importance(model, X_test, y_test, scoring='accuracy', n_repeats=5, random_state=42)
             for feature, importance in zip(X_train.columns, perm_importance.importances_mean):
                 feature_importances.append({
                     'Model': model_name,
@@ -182,14 +187,30 @@ def compute_feature_importance_with_ranking(models, X_train, X_test, y_train, y_
                     'Importance': importance
                 })
 
-    # Convert to DataFrame and rank features
-    feature_importances_df = pd.DataFrame(feature_importances)
-    feature_importances_df['Rank'] = feature_importances_df.groupby('Model')['Importance'].transform(lambda x: (-x).argsort().argsort() + 1)
+    # Save results to CSV
+    comparison_df = pd.DataFrame(comparison_results)
+    comparison_df.to_csv(f"{output_path}/ModelComparisonResults.csv", index=False)
 
-    # Save to CSV
+    threshold_df = pd.DataFrame(threshold_results)
+    threshold_df.to_csv(f"{output_path}/ThresholdTuningResults.csv", index=False)
+
+        # Saves feature importance and creates a rank for feature by model to make comparison easier
+    feature_importances_df = pd.DataFrame(feature_importances)
+    feature_importances_df['Rank'] = feature_importances_df.groupby('Model')['Importance'].rank(ascending=False).astype(int)
     feature_importances_df.to_csv(f"{output_path}/FeatureImportance.csv", index=False)
+
+    best_params_df = pd.DataFrame(best_params)
+    best_params_df.to_csv(os.path.join(output_path, 'BestHyperparameters.csv'), index=False)
+
+    print('All files have been saved')
 
 # Call all the functions
 thresholds = np.arange(0.1, 1.0, 0.1)
-evaluate_and_tune(models, X_train_scaled, X_test_scaled, y_train, y_test, thresholds, output_path)
-compute_feature_importance_with_ranking(models, X_train_scaled, X_test_scaled, y_train, y_test, output_path)
+evaluate_tune_and_record(models, X_train_scaled, X_test_scaled, y_train, y_test, thresholds, output_path)
+
+# End timer
+end_time = time.time()
+elapsed_time = end_time - start_time
+hours, rem = divmod(elapsed_time, 3600)
+minutes, seconds = divmod(rem, 60)
+print("The execution of this code took {:0>2}:{:0>2}:{:05.2f} (HH:MM:SS)".format(int(hours), int(minutes), seconds))
