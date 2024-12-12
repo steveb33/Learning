@@ -6,7 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import classification_report, roc_auc_score, precision_recall_fscore_support, confusion_matrix
+from sklearn.metrics import roc_auc_score, precision_recall_fscore_support, confusion_matrix
+from sklearn.inspection import permutation_importance
 
 # Read in CSV and create output path
 data = pd.read_csv('/Users/stevenbarnes/Desktop/Resources/Data/LoanDefaultPrediction/Loan_default.csv')
@@ -73,68 +74,71 @@ def evaluate_and_tune(models, X_train, X_test, y_train, y_test, thresholds, outp
         # Train and predict
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)[:, 1]
+        y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, 'predict_proba') else None
 
         # Evaluate base metrics
         accuracy = model.score(X_test, y_test)
         precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred, average='binary')
-        auc_roc = roc_auc_score(y_test, y_proba)
+        auc_roc = roc_auc_score(y_test, y_proba) if y_proba is not None else None
 
         # Add to comparison results
         comparison_results.append({'Model': model_name, 'Metric': 'Accuracy', 'Values': accuracy})
         comparison_results.append({'Model': model_name, 'Metric': 'Precision', 'Values': precision})
         comparison_results.append({'Model': model_name, 'Metric': 'Recall', 'Values': recall})
         comparison_results.append({'Model': model_name, 'Metric': 'F1-Score', 'Values': f1})
-        comparison_results.append({'Model': model_name, 'Metric': 'AUC-ROC', 'Values': auc_roc})
+        if auc_roc is not None:
+            comparison_results.append({'Model': model_name, 'Metric': 'AUC-ROC', 'Values': auc_roc})
 
         # Threshold tuning
-        for threshold in thresholds:
-            y_pred_thresh = (y_proba >= threshold).astype(int)
+        if y_proba is not None:
+            for threshold in thresholds:
+                y_pred_thresh = (y_proba >= threshold).astype(int)
 
-            tn, fp, fn, tp = confusion_matrix(y_test, y_pred_thresh).ravel()
+                tn, fp, fn, tp = confusion_matrix(y_test, y_pred_thresh).ravel()
 
-            precision_thresh, recall_thresh, f1_thresh, _ = precision_recall_fscore_support(
-                y_test, y_pred_thresh, average='binary'
-            )
+                precision_thresh, recall_thresh, f1_thresh, _ = precision_recall_fscore_support(
+                    y_test, y_pred_thresh, average='binary'
+                )
 
-            false_negative_rate = fn / (fn + tp) if (fn + tp) > 0 else 0
-            false_positive_rate = fp / (fp + tn) if (fp + tn) > 0 else 0
+                false_negative_rate = fn / (fn + tp) if (fn + tp) > 0 else 0
+                false_positive_rate = fp / (fp + tn) if (fp + tn) > 0 else 0
 
-            threshold_results.append({
-                'Model': model_name,
-                'Threshold': threshold,
-                'Metric': 'Precision', 'Values': precision_thresh
-            })
-            threshold_results.append({
-                'Model': model_name,
-                'Threshold': threshold,
-                'Metric': 'Recall', 'Values': recall_thresh
-            })
-            threshold_results.append({
-                'Model': model_name,
-                'Threshold': threshold,
-                'Metric': 'F1-Score', 'Values': f1_thresh
-            })
-            threshold_results.append({
-                'Model': model_name,
-                'Threshold': threshold,
-                'Metric': 'False Negative Rate', 'Values': false_negative_rate
-            })
-            threshold_results.append({
-                'Model': model_name,
-                'Threshold': threshold,
-                'Metric': 'False Positive Rate', 'Values': false_positive_rate
-            })
-            threshold_results.append({
-                'Model': model_name,
-                'Threshold': threshold,
-                'Metric': 'Accuracy', 'Values': accuracy  # Accuracy does not change with thresholds
-            })
-            threshold_results.append({
-                'Model': model_name,
-                'Threshold': threshold,
-                'Metric': 'AUC-ROC', 'Values': auc_roc  # AUC-ROC remains constant for the model
-            })
+                threshold_results.append({
+                    'Model': model_name,
+                    'Threshold': threshold,
+                    'Metric': 'Precision', 'Values': precision_thresh
+                })
+                threshold_results.append({
+                    'Model': model_name,
+                    'Threshold': threshold,
+                    'Metric': 'Recall', 'Values': recall_thresh
+                })
+                threshold_results.append({
+                    'Model': model_name,
+                    'Threshold': threshold,
+                    'Metric': 'F1-Score', 'Values': f1_thresh
+                })
+                threshold_results.append({
+                    'Model': model_name,
+                    'Threshold': threshold,
+                    'Metric': 'False Negative Rate', 'Values': false_negative_rate
+                })
+                threshold_results.append({
+                    'Model': model_name,
+                    'Threshold': threshold,
+                    'Metric': 'False Positive Rate', 'Values': false_positive_rate
+                })
+                threshold_results.append({
+                    'Model': model_name,
+                    'Threshold': threshold,
+                    'Metric': 'Accuracy', 'Values': accuracy  # Accuracy does not change with thresholds
+                })
+                if auc_roc is not None:
+                    threshold_results.append({
+                        'Model': model_name,
+                        'Threshold': threshold,
+                        'Metric': 'AUC-ROC', 'Values': auc_roc  # AUC-ROC remains constant for the model
+                    })
 
     # Save results to CSV
     comparison_df = pd.DataFrame(comparison_results)
@@ -143,6 +147,49 @@ def evaluate_and_tune(models, X_train, X_test, y_train, y_test, thresholds, outp
     threshold_df = pd.DataFrame(threshold_results)
     threshold_df.to_csv(f"{output_path}/ThresholdTuningResults.csv", index=False)
 
-# Call the evaluation and threshold tuning function
+# Function to evaluate and compute feature importance
+def compute_feature_importance_with_ranking(models, X_train, X_test, y_train, y_test, output_path):
+    feature_importances = []
+
+    for model_name, model in models:
+        model.fit(X_train, y_train)
+
+        if hasattr(model, 'feature_importances_'):
+            # Tree-based models (Random Forest, Gradient Boosting)
+            importances = model.feature_importances_
+            for feature, importance in zip(X_train.columns, importances):
+                feature_importances.append({
+                    'Model': model_name,
+                    'Feature': feature,
+                    'Importance': importance
+                })
+        elif isinstance(model, LogisticRegression):
+            # Logistic Regression (coefficients)
+            coefficients = model.coef_[0]
+            for feature, coef in zip(X_train.columns, coefficients):
+                feature_importances.append({
+                    'Model': model_name,
+                    'Feature': feature,
+                    'Importance': coef,
+                })
+        elif model_name == 'K-Nearest Neighbors':
+            # K-Nearest Neighbors using permutation importance
+            perm_importance = permutation_importance(model, X_test, y_test, scoring='accuracy', n_repeats=10, random_state=42)
+            for feature, importance in zip(X_train.columns, perm_importance.importances_mean):
+                feature_importances.append({
+                    'Model': model_name,
+                    'Feature': feature,
+                    'Importance': importance
+                })
+
+    # Convert to DataFrame and rank features
+    feature_importances_df = pd.DataFrame(feature_importances)
+    feature_importances_df['Rank'] = feature_importances_df.groupby('Model')['Importance'].transform(lambda x: (-x).argsort().argsort() + 1)
+
+    # Save to CSV
+    feature_importances_df.to_csv(f"{output_path}/FeatureImportance.csv", index=False)
+
+# Call all the functions
 thresholds = np.arange(0.1, 1.0, 0.1)
 evaluate_and_tune(models, X_train_scaled, X_test_scaled, y_train, y_test, thresholds, output_path)
+compute_feature_importance_with_ranking(models, X_train_scaled, X_test_scaled, y_train, y_test, output_path)
