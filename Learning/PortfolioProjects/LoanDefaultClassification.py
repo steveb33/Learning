@@ -196,7 +196,8 @@ def evaluate_tune_and_record(models, X_train, X_test, y_train, y_test, threshold
 
         # Saves feature importance and creates a rank for feature by model to make comparison easier
     feature_importances_df = pd.DataFrame(feature_importances)
-    feature_importances_df['Rank'] = feature_importances_df.groupby('Model')['Importance'].rank(ascending=False).astype(int)
+    feature_importances_df['Rank'] = feature_importances_df.groupby('Model')['Importance'].apply(
+        lambda x: x.abs().rank(ascending=False)).astype(int)
     feature_importances_df.to_csv(f"{output_path}/FeatureImportance.csv", index=False)
 
     best_params_df = pd.DataFrame(best_params)
