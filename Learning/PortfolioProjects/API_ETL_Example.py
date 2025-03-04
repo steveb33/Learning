@@ -6,7 +6,6 @@ API_KEY = ""
 API_HOST = "real-time-finance-data.p.rapidapi.com"
 BASE_URL = "https://real-time-finance-data.p.rapidapi.com/stock-quote"
 
-
 def fetch_stock_data(symbols, exchange="NASDAQ"):
     """Fetch stock data from RapidAPI for a list of stock symbols."""
     headers = {
@@ -14,20 +13,38 @@ def fetch_stock_data(symbols, exchange="NASDAQ"):
         "X-RapidAPI-Host": API_HOST
     }
 
-    stock_results = {}
+    stock_results = []
 
     for symbol in symbols:
-        # Format the URL with the stock symbol and exchange
         url = f"{BASE_URL}?symbol={symbol}%3A{exchange}&language=en"
 
         try:
-            response = requests.get(url, headers=headers, timeout=10)  # Set timeout for request
+            response = requests.get(url, headers=headers, timeout=10)
 
             if response.status_code == 200:
                 try:
-                    stock_results[symbol] = response.json()
+                    data = response.json().get("data", {})
+
+                    # Extract relevant fields into a structured format
+                    stock_info = {
+                        "symbol": data.get("symbol", "N/A"),
+                        "name": data.get("name", "N/A"),
+                        "price": data.get("price", None),
+                        "open": data.get("open", None),
+                        "high": data.get("high", None),
+                        "low": data.get("low", None),
+                        "volume": data.get("volume", None),
+                        "previous_close": data.get("previous_close", None),
+                        "change": data.get("change", None),
+                        "change_percent": data.get("change_percent", None),
+                        "last_update_utc": data.get("last_update_utc", None)
+                    }
+
+                    stock_results.append(stock_info)
+
                 except ValueError:
                     print(f"JSON Decode Error for {symbol}")
+
             else:
                 print(f"Error for {symbol}: {response.status_code}, {response.text}")
 
@@ -38,7 +55,6 @@ def fetch_stock_data(symbols, exchange="NASDAQ"):
 
     return stock_results
 
-
 # Stock symbols to search for
 stock_symbols = ['AAPL', 'TSLA', 'GOOGL', 'META', 'NVDA', 'AMD']
 
@@ -47,6 +63,5 @@ stock_data = fetch_stock_data(stock_symbols)
 
 # Print results
 if stock_data:
-    for symbol, data in stock_data.items():
-        print(f"\nStock: {symbol}")
-        print(data)
+    for stock in stock_data:
+        print(stock)
