@@ -1,1 +1,14 @@
 100Days/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS system file
+.DS_Store
+
+# Virtual environments
+.env
+.venv/
